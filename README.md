@@ -18,3 +18,4 @@ https://github.com/w4ngzhen/wgpu_winit_example
 So credit to them!
 The refactoring around the window is neat using ARC to be able to get a reference on a mutable reference asynchronously.
 
+![Rainbow_triangle](https://github.com/user-attachments/assets/29c75acc-308e-4324-9bdb-38dea9418bb8)
