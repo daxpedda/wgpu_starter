@@ -125,9 +125,9 @@ impl<'window> State<'window> {
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
                 }),
                 primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList, // 1.
+                    topology: wgpu::PrimitiveTopology::TriangleList, 
                     strip_index_format: None,
-                    front_face: wgpu::FrontFace::Ccw, // 2.
+                    front_face: wgpu::FrontFace::Ccw, 
                     cull_mode: Some(wgpu::Face::Back),
                     // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
                     polygon_mode: wgpu::PolygonMode::Fill,
@@ -136,14 +136,14 @@ impl<'window> State<'window> {
                     // Requires Features::CONSERVATIVE_RASTERIZATION
                     conservative: false,
                 },
-                depth_stencil: None, // 1.
+                depth_stencil: None, 
                 multisample: wgpu::MultisampleState {
-                    count: 1, // 2.
-                    mask: !0, // 3.
-                    alpha_to_coverage_enabled: false, // 4.
+                    count: 1, 
+                    mask: !0, 
+                    alpha_to_coverage_enabled: false, 
                 },
-                multiview: None, // 5.
-                cache: None, // 6.
+                multiview: None, 
+                cache: None, 
             });
 
                 
@@ -183,12 +183,12 @@ impl<'window> State<'window> {
         }
     }
 
-    // When rendering, it starts a render path.
+    // When rendering, you start a render path.
     // At its core it is a description of the various resources we want to output to.
     // For example, the screen: the color buffer. It is called a color attachment.
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
-        //  Grab an image to draw to??
+        //  Grab an image to draw to. Swap chain.
         // A swap chain is general structure for queueing images up a to be drawn.
         // You draw and then you swap, it is like a double buffer.
         let drawable = self.surface.get_current_texture()?;
@@ -215,8 +215,8 @@ impl<'window> State<'window> {
                     // Background color
                     r: 0.8,
                     g: 0.3,
-                    b: 0.7,
-                    a: 0.5,
+                    b: 0.4,
+                    a: 0.9,
                 }),
                 store: wgpu::StoreOp::Store, // Operation Whether data will be written to through this attachment.
             },
