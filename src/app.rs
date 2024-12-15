@@ -1,3 +1,4 @@
+use crate::{state::State, utils::load_icon};
 use std::sync::Arc;
 use winit::{
     application::ApplicationHandler,
@@ -7,7 +8,7 @@ use winit::{
     window::{Window, WindowId},
 };
 
-use crate::state::State;
+
 
 //  Window struct
 #[derive(Default)]
@@ -19,7 +20,10 @@ pub struct App<'window> {
 
 impl<'window> ApplicationHandler for App<'window> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let window_attributes = Window::default_attributes().with_title("Ubik says Learn WGPU");
+        let window_icon: Option<winit::window::Icon> = Some(load_icon("assets/icon.png"));
+        let window_attributes = Window::default_attributes()
+            .with_title("Ubik says Learn WGPU")
+            .with_window_icon(window_icon);
 
         let window = Arc::new(
             event_loop
@@ -30,6 +34,26 @@ impl<'window> ApplicationHandler for App<'window> {
         let state = State::new(window.clone());
         self.state = Some(state);
         self.window = Some(window.clone());
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            // Winit prevents sizing with CSS, so we have to set
+            // the size manually when on web.
+            use winit::dpi::PhysicalSize;
+            let _ = window.clone().request_inner_size(PhysicalSize::new(450, 400));
+            
+            use winit::platform::web::WindowExtWebSys;
+            web_sys::window()
+                .and_then(|win| win.document())
+                .and_then(|doc| {
+                    let dst = doc.get_element_by_id("wasm-example")?;
+                    let canvas = web_sys::Element::from(window.clone().canvas()?);
+                    dst.append_child(&canvas).ok()?;
+                    Some(())
+                })
+                .expect("Couldn't append canvas to document body.");
+        }
+
     }
 
     fn window_event(

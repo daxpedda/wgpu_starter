@@ -1,10 +1,11 @@
 use pollster;
-use wgpu::util::DeviceExt;
 use std::sync::Arc;
+use wgpu::util::DeviceExt;
 use winit::dpi::PhysicalSize;
 use winit::window::Window;
 
 use crate::vertex::{self, Vertex, VERTICES};
+
 
 // State- Instance
 pub struct State<'window> {
@@ -19,15 +20,26 @@ pub struct State<'window> {
 }
 
 impl<'window> State<'window> {
+
     pub async fn new_async(window: Arc<Window>) -> State<'window> {
         let size = window.inner_size();
 
         //>> Instance --------------------
-        let instance_descriptor = wgpu::InstanceDescriptor {
+
+        /*      let instance_descriptor = wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
             ..Default::default()
-        };
+        }; */
+                // The instance is a handle to our GPU
+        // Backends::all => Vulkan + Metal + DX12 + Browser WebGPU
 
+        let instance_descriptor = wgpu::InstanceDescriptor {
+            #[cfg(not(target_arch="wasm32"))]
+            backends: wgpu::Backends::all(),
+            #[cfg(target_arch="wasm32")]
+            backends: wgpu::Backends::GL,
+            ..Default::default()
+        };
         let instance = wgpu::Instance::new(instance_descriptor);
         //<<--------------------
 
@@ -75,7 +87,8 @@ impl<'window> State<'window> {
         let surface_format = surface_capabilities
             .formats
             .iter()
-            .copied().find(|f| f.is_srgb())
+            .copied()
+            .find(|f| f.is_srgb())
             .unwrap_or(surface_capabilities.formats[0]);
 
         let config = wgpu::SurfaceConfiguration {
@@ -91,13 +104,13 @@ impl<'window> State<'window> {
 
         surface.configure(&device, &config);
         //<<--------------------
-        
+
         //>> Shaders
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/shaders.wgsl").into()),
         });
-            
+
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
@@ -106,57 +119,54 @@ impl<'window> State<'window> {
             });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("Render Pipeline"),
-                layout: Some(&render_pipeline_layout),
-                vertex: wgpu::VertexState {
-                    module: &shader,
-                    entry_point: Some("vertex"), 
-                    buffers: &[Vertex::desc(),], 
-                    compilation_options: wgpu::PipelineCompilationOptions::default(),
-                },
-                fragment: Some(wgpu::FragmentState { 
-                    module: &shader,
-                    entry_point: Some("fragment"),
-                    targets: &[Some(wgpu::ColorTargetState { 
-                        format: config.format,
-                        blend: Some(wgpu::BlendState::REPLACE),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                    compilation_options: wgpu::PipelineCompilationOptions::default(),
-                }),
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList, 
-                    strip_index_format: None,
-                    front_face: wgpu::FrontFace::Ccw, 
-                    cull_mode: Some(wgpu::Face::Back),
-                    // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
-                    polygon_mode: wgpu::PolygonMode::Fill,
-                    // Requires Features::DEPTH_CLIP_CONTROL
-                    unclipped_depth: false,
-                    // Requires Features::CONSERVATIVE_RASTERIZATION
-                    conservative: false,
-                },
-                depth_stencil: None, 
-                multisample: wgpu::MultisampleState {
-                    count: 1, 
-                    mask: !0, 
-                    alpha_to_coverage_enabled: false, 
-                },
-                multiview: None, 
-                cache: None, 
-            });
+            label: Some("Render Pipeline"),
+            layout: Some(&render_pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: Some("vertex"),
+                buffers: &[Vertex::desc()],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: Some("fragment"),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: Some(wgpu::Face::Back),
+                // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
+                polygon_mode: wgpu::PolygonMode::Fill,
+                // Requires Features::DEPTH_CLIP_CONTROL
+                unclipped_depth: false,
+                // Requires Features::CONSERVATIVE_RASTERIZATION
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview: None,
+            cache: None,
+        });
 
-                
-        let vertex_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(vertex::VERTICES),
-                usage: wgpu::BufferUsages::VERTEX,
-            }
-        );
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Vertex Buffer"),
+            contents: bytemuck::cast_slice(vertex::VERTICES),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
 
-        let num_vertices = VERTICES.len() as u32;      
-            
+        let num_vertices = VERTICES.len() as u32;
+
         // RETURN  new State
         Self {
             surface,
@@ -169,10 +179,14 @@ impl<'window> State<'window> {
             num_vertices,
         }
     }
+
     pub fn new(window: Arc<Window>) -> State<'window> {
-        pollster::block_on(State::new_async(window))
+        
+            pollster::block_on(State::new_async(window))
+
     }
 
+    
     // Window resize
     pub fn resize(&mut self, new_size: PhysicalSize<u32>) {
         if new_size.width > 0 && new_size.height > 0 {
@@ -232,12 +246,12 @@ impl<'window> State<'window> {
         };
 
         {
-        // Command encoder submit and immediately finish
-        let mut render_pass = command_encoder.begin_render_pass(&render_pass_descriptor);
-        render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.draw(0..self.num_vertices, 0..1); 
-        }  // <<<< THIS IS IMPORTANT. Drop the 
+            // Command encoder submit and immediately finish
+            let mut render_pass = command_encoder.begin_render_pass(&render_pass_descriptor);
+            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+            render_pass.draw(0..self.num_vertices, 0..1);
+        } // <<<< THIS IS IMPORTANT. Drop the
 
         self.queue.submit(std::iter::once(command_encoder.finish()));
 
