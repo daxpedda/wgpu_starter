@@ -96,7 +96,7 @@ impl<'window> State<'window> {
             format: surface_format,
             width: size.width,
             height: size.height,
-            present_mode:  surface_capabilities.present_modes[0], // Fifo is usually supported accross graphic system . Basically a buffer but limit the frame rate  . Mailbox is woth a try
+            present_mode:   surface_capabilities.present_modes[0], // Fifo is usually supported accross graphic system . Basically a buffer but limit the frame rate  . Mailbox is woth a try
             view_formats: vec![],
             alpha_mode: surface_capabilities.alpha_modes[0],
             desired_maximum_frame_latency: 2, // hint for the number of images to queue up.
