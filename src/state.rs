@@ -21,8 +21,8 @@ pub struct State<'window> {
 
 impl<'window> State<'window> {
 
-    pub async fn new_async(window: Arc<Window>) -> State<'window> {
-        let size = window.inner_size();
+    pub async fn new_async(window: Arc<Window>, size: PhysicalSize<u32>) -> State<'window> {
+        // let size = window.inner_size();
 
         //>> Instance --------------------
 
@@ -180,9 +180,9 @@ impl<'window> State<'window> {
         }
     }
 
-    pub fn new(window: Arc<Window>) -> State<'window> {
+    pub fn new(window: Arc<Window>, size: PhysicalSize<u32>) -> State<'window> {
         
-            pollster::block_on(State::new_async(window))
+            pollster::block_on(State::new_async(window, size))
 
     }
 

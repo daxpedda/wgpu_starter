@@ -1,14 +1,11 @@
 use crate::{state::State, utils::load_icon};
 use std::sync::Arc;
 use winit::{
-    application::ApplicationHandler,
-    event::*,
-    event_loop::ActiveEventLoop,
-    keyboard::{KeyCode, PhysicalKey},
-    window::{Window, WindowId},
+    application::ApplicationHandler, dpi::PhysicalSize, event::*, event_loop::ActiveEventLoop, keyboard::{KeyCode, PhysicalKey}, window::{Window, WindowId}
 };
 
-
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::JsCast;
 
 //  Window struct
 #[derive(Default)]
@@ -16,42 +13,64 @@ pub struct App<'window> {
     window: Option<Arc<Window>>,
     state: Option<State<'window>>,
     window_id: Option<WindowId>,
+    last_size: PhysicalSize<u32>,
 }
 
 impl<'window> ApplicationHandler for App<'window> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let window_icon: Option<winit::window::Icon> = Some(load_icon("assets/icon.png"));
-        let window_attributes = Window::default_attributes()
-            .with_title("Ubik says Learn WGPU")
-            .with_window_icon(window_icon);
 
-        let window = Arc::new(
-            event_loop
-                .create_window(window_attributes)
-                .expect("create window error"),
-        );
-        self.window_id = Some(window.id());
-        let state = State::new(window.clone());
-        self.state = Some(state);
-        self.window = Some(window.clone());
+        let mut window_attributes = Window::default_attributes();
+
+        
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let window_icon: Option<winit::window::Icon> = Some(load_icon("assets/icon.png"));
+            window_attributes = window_attributes
+                .with_title("Ubik says Learn WGPU")
+                .with_window_icon(window_icon);
+        }
+
+        #[allow(unused_assignments)]
+        #[cfg(target_arch = "wasm32")]
+        let (mut canvas_width, mut canvas_height) = (0, 0);
 
         #[cfg(target_arch = "wasm32")]
         {
-            // Winit prevents sizing with CSS, so we have to set
-            // the size manually when on web.
-            use winit::dpi::PhysicalSize;
-            let _ = window.clone().request_inner_size(PhysicalSize::new(450, 400));
-            
-            use winit::platform::web::WindowExtWebSys;
-            web_sys::window()
-                .and_then(|win| win.document())
-                .and_then(|doc| {
-                    let dst = doc.get_element_by_id("wasm-example")?;
-                    let canvas = web_sys::Element::from(window.clone().canvas()?);
-                    dst.append_child(&canvas).ok()?;
-                    Some(())
-                })
-                .expect("Couldn't append canvas to document body.");
+            use winit::platform::web::WindowAttributesExtWebSys;
+            let canvas = web_sys::window()
+                .unwrap()
+                .document()
+                .unwrap()
+                .get_element_by_id("canvas")
+                .unwrap()
+                .dyn_into::<web_sys::HtmlCanvasElement>()
+                .unwrap();
+            canvas_width = canvas.width();
+            canvas_height = canvas.height();
+            self.last_size = (canvas_width, canvas_height).into();
+            window_attributes = window_attributes.with_canvas(Some(canvas));
+        }
+
+
+        if let Ok(window) = event_loop.create_window(window_attributes) {
+            let first_window_handle = self.window.is_none();
+            let window_handle = Arc::new(window);
+            self.window_id = Some(window_handle.id());
+
+            if first_window_handle {
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    let inner_size = window_handle.inner_size();
+                    self.last_size = inner_size;
+                }    
+     
+            }
+            let state = State::new(window_handle.clone(), self.last_size);
+            self.state = Some(state);
+            self.window = Some(window_handle.clone());
+
+
+        
         }
 
     }
@@ -75,6 +94,7 @@ impl<'window> ApplicationHandler for App<'window> {
                     {
                         state.resize(new_size);
                         window.request_redraw();
+                        self.last_size = new_size;
                     }
                 }
                 WindowEvent::RedrawRequested => {
