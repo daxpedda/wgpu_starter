@@ -7,6 +7,7 @@ use winit::{
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsCast;
 
+
 //  Window struct
 #[derive(Default)]
 pub struct App<'window> {
@@ -30,7 +31,7 @@ impl<'window> ApplicationHandler for App<'window> {
                 .with_window_icon(window_icon);
         }
 
-        #[allow(unused_assignments)]
+         #[allow(unused_assignments)]
         #[cfg(target_arch = "wasm32")]
         let (mut canvas_width, mut canvas_height) = (0, 0);
 
@@ -47,8 +48,11 @@ impl<'window> ApplicationHandler for App<'window> {
                 .unwrap();
             canvas_width = canvas.width();
             canvas_height = canvas.height();
-            self.last_size = (canvas_width, canvas_height).into();
-            window_attributes = window_attributes.with_canvas(Some(canvas));
+            self.last_size = (canvas_width, canvas_height).into(); 
+            
+            window_attributes = window_attributes.with_canvas(Some(canvas)).with_append(true);
+           // window_attributes = window_attributes.with_append(true);
+            
         }
 
 
@@ -66,11 +70,9 @@ impl<'window> ApplicationHandler for App<'window> {
      
             }
             let state = State::new(window_handle.clone(), self.last_size);
-            self.state = Some(state);
+            self.state = state;
             self.window = Some(window_handle.clone());
-
-
-        
+       
         }
 
     }

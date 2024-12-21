@@ -1,4 +1,4 @@
-# **WGPU starter with winit 0.30.5 and WGPU version 23.0.1**
+# **WGPU starter with Winit 0.30.5 and WGPU version 23.0.1**
 
 _Date: 14/12/2024_
 
@@ -10,12 +10,30 @@ I also took inspiration from the Youtube series from GetIntoGameDev  (https://ww
 
 ## Why?
 
-Winit 0.30.5 has introduced breaking changes to its API. The examples on Learn GPU and GetIntoGameDev, no longer work with latest version of winit and WGPU.
+Winit 0.30.5 has introduced breaking changes to its API. The examples on Learn GPU and GetIntoGameDev, no longer work with latest version of **Winit** and WGPU.
 I had troubles finding online documentation for **Winit** updated API.
 
 Luckily I found this brilliant code that resolves the issue:
+
 https://github.com/w4ngzhen/wgpu_winit_example
+
 So credit to them!
 The refactoring around the window is neat using ARC to be able to get a reference on a mutable reference asynchronously.
 
 ![Rainbow_triangle](https://github.com/user-attachments/assets/29c75acc-308e-4324-9bdb-38dea9418bb8)
+
+## **How to run it?**
+
+- for the desktop version simply run:
+
+  ```bash
+  > cargo run 
+  ```
+
+- for the WASM browser version, you can install Trunk (https://trunkrs.dev/) and run :
+
+  ```bash
+  > trunk serve
+  ```
+
+  And open your navigator and enter the URL. Default is http://127.0.0.1:8080/

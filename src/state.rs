@@ -6,6 +6,8 @@ use winit::window::Window;
 
 use crate::vertex::{self, Vertex, VERTICES};
 
+#[cfg(target_arch = "wasm32")]
+use futures::channel::oneshot::Receiver;
 
 // State- Instance
 pub struct State<'window> {
@@ -37,7 +39,7 @@ impl<'window> State<'window> {
             #[cfg(not(target_arch="wasm32"))]
             backends: wgpu::Backends::all(),
             #[cfg(target_arch="wasm32")]
-            backends: wgpu::Backends::GL,
+            backends: wgpu::Backends::BROWSER_WEBGPU,
             ..Default::default()
         };
         let instance = wgpu::Instance::new(instance_descriptor);
@@ -180,9 +182,27 @@ impl<'window> State<'window> {
         }
     }
 
-    pub fn new(window: Arc<Window>, size: PhysicalSize<u32>) -> State<'window> {
+    pub fn new(window: Arc<Window>, size: PhysicalSize<u32>) -> Option<State<'window>> {
+
         
-            pollster::block_on(State::new_async(window, size))
+        #[cfg(not(target_arch = "wasm32"))]        
+           return Some(pollster::block_on(State::new_async(window, size))); // found that pollster::block_on works for the wasm browser branch.
+
+        #[cfg(target_arch = "wasm32")]
+            {
+                let (sender, mut receiver) = futures::channel::oneshot::channel();
+
+                wasm_bindgen_futures::spawn_local(async move {
+                    let result = State::new_async(window, size).await;
+                    sender.send(result);
+                });
+            
+                let result = receiver.try_recv();
+                    if let Ok(state) = result {
+                        return state;
+                    } else { return None}
+                 
+            } 
 
     }
 
