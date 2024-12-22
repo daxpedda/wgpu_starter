@@ -5,7 +5,7 @@ use winit::{
 pub mod state;
 
 pub mod app;
-use app::App;
+use app::{App, AppEvent};
 
 pub mod vertex;
 
@@ -25,7 +25,7 @@ fn run() {
                 env_logger::init();
             }
         }
-            let event_loop = EventLoop::new().unwrap();
+            let event_loop = EventLoop::<AppEvent>::with_user_event().build().unwrap();
         // ControlFlow::Poll continuously runs the event loop, even if the OS hasn't
         // dispatched any events. This is ideal for games and similar applications.
         event_loop.set_control_flow(ControlFlow::Poll);
@@ -35,7 +35,7 @@ fn run() {
         // input, and uses significantly less power/CPU time than ControlFlow::Poll.
         //event_loop.set_control_flow(ControlFlow::Wait);
     
-        let mut app = App::default();
+        let mut app = App::new(event_loop.create_proxy());
         let _ = event_loop.run_app(&mut app);
         //let mut state = State::new(&app);
 

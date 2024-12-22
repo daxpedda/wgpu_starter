@@ -1,7 +1,7 @@
 use crate::{state::State, utils::load_icon};
 use std::sync::Arc;
 use winit::{
-    application::ApplicationHandler, dpi::PhysicalSize, event::*, event_loop::ActiveEventLoop, keyboard::{KeyCode, PhysicalKey}, window::{Window, WindowId}
+    application::ApplicationHandler, dpi::PhysicalSize, event::*, event_loop::{ActiveEventLoop, EventLoopProxy}, keyboard::{KeyCode, PhysicalKey}, window::{Window, WindowId}
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -9,17 +9,33 @@ use wasm_bindgen::JsCast;
 
 
 //  Window struct
-#[derive(Default)]
-pub struct App<'window> {
+pub struct App {
+    proxy: EventLoopProxy<AppEvent>,
     window: Option<Arc<Window>>,
-    state: Option<State<'window>>,
+    state: Option<State>,
     window_id: Option<WindowId>,
     last_size: PhysicalSize<u32>,
 }
 
-impl<'window> ApplicationHandler for App<'window> {
-    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+#[derive(Debug)]
+pub enum AppEvent {
+    StateReady(State),
+}
 
+impl App {
+    pub fn new(proxy: EventLoopProxy<AppEvent>) -> Self {
+        Self {
+            proxy,
+            window: None,
+            state: None,
+            window_id: None,
+            last_size: PhysicalSize::default(),
+        }
+    }
+}
+
+impl ApplicationHandler<AppEvent> for App {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let mut window_attributes = Window::default_attributes();
 
         
@@ -69,12 +85,16 @@ impl<'window> ApplicationHandler for App<'window> {
                 }    
      
             }
-            let state = State::new(window_handle.clone(), self.last_size);
-            self.state = state;
+            State::new(self.proxy.clone(), window_handle.clone(), self.last_size);
             self.window = Some(window_handle.clone());
        
         }
+    }
 
+    fn user_event(&mut self, event_loop: &ActiveEventLoop, event: AppEvent) {
+        match event {
+            AppEvent::StateReady(state) => self.state = Some(state),
+        }
     }
 
     fn window_event(
