@@ -36,10 +36,7 @@ impl<'window> State<'window> {
         // Backends::all => Vulkan + Metal + DX12 + Browser WebGPU
 
         let instance_descriptor = wgpu::InstanceDescriptor {
-            #[cfg(not(target_arch="wasm32"))]
             backends: wgpu::Backends::all(),
-            #[cfg(target_arch="wasm32")]
-            backends: wgpu::Backends::BROWSER_WEBGPU,
             ..Default::default()
         };
         let instance = wgpu::Instance::new(instance_descriptor);
