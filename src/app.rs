@@ -4,17 +4,12 @@ use winit::{
     application::ApplicationHandler, dpi::PhysicalSize, event::*, event_loop::{ActiveEventLoop, EventLoopProxy}, keyboard::{KeyCode, PhysicalKey}, window::{Window, WindowId}
 };
 
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen::JsCast;
-
-
 //  Window struct
 pub struct App {
     proxy: EventLoopProxy<AppEvent>,
     window: Option<Arc<Window>>,
     state: Option<State>,
     window_id: Option<WindowId>,
-    last_size: PhysicalSize<u32>,
 }
 
 #[derive(Debug)]
@@ -29,7 +24,6 @@ impl App {
             window: None,
             state: None,
             window_id: None,
-            last_size: PhysicalSize::default(),
         }
     }
 }
@@ -47,28 +41,10 @@ impl ApplicationHandler<AppEvent> for App {
                 .with_window_icon(window_icon);
         }
 
-         #[allow(unused_assignments)]
-        #[cfg(target_arch = "wasm32")]
-        let (mut canvas_width, mut canvas_height) = (0, 0);
-
         #[cfg(target_arch = "wasm32")]
         {
             use winit::platform::web::WindowAttributesExtWebSys;
-            let canvas = web_sys::window()
-                .unwrap()
-                .document()
-                .unwrap()
-                .get_element_by_id("canvas")
-                .unwrap()
-                .dyn_into::<web_sys::HtmlCanvasElement>()
-                .unwrap();
-            canvas_width = canvas.width();
-            canvas_height = canvas.height();
-            self.last_size = (canvas_width, canvas_height).into(); 
-            
-            window_attributes = window_attributes.with_canvas(Some(canvas)).with_append(true);
-           // window_attributes = window_attributes.with_append(true);
-            
+            window_attributes = window_attributes.with_append(true);
         }
 
 
@@ -77,15 +53,7 @@ impl ApplicationHandler<AppEvent> for App {
             let window_handle = Arc::new(window);
             self.window_id = Some(window_handle.id());
 
-            if first_window_handle {
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    let inner_size = window_handle.inner_size();
-                    self.last_size = inner_size;
-                }    
-     
-            }
-            State::new(self.proxy.clone(), window_handle.clone(), self.last_size);
+            State::new(self.proxy.clone(), window_handle.clone());
             self.window = Some(window_handle.clone());
        
         }
@@ -112,11 +80,8 @@ impl ApplicationHandler<AppEvent> for App {
                     event_loop.exit();
                 }
                 WindowEvent::Resized(new_size) => {
-                    if let (Some(state), Some(window)) = (self.state.as_mut(), self.window.as_ref())
-                    {
+                    if let Some(state)= self.state.as_mut() {
                         state.resize(new_size);
-                        window.request_redraw();
-                        self.last_size = new_size;
                     }
                 }
                 WindowEvent::RedrawRequested => {

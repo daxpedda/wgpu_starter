@@ -11,11 +11,7 @@ pub mod vertex;
 
 pub mod utils;
 
-#[cfg(target_arch="wasm32")]
-use wasm_bindgen::prelude::wasm_bindgen;
-
-#[cfg_attr(target_arch="wasm32", wasm_bindgen(start))]
-fn run() {
+fn main() {
     
         cfg_if::cfg_if! {
             if #[cfg(target_arch = "wasm32")] {
@@ -39,7 +35,4 @@ fn run() {
         let _ = event_loop.run_app(&mut app);
         //let mut state = State::new(&app);
 
-}
-fn main()  {
-    run();
 }

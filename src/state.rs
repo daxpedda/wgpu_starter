@@ -10,22 +10,18 @@ use crate::vertex::{self, Vertex, VERTICES};
 // State- Instance
 #[derive(Debug)]
 pub struct State {
+    window: Arc<Window>,
     surface: wgpu::Surface<'static>,
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
-    size: PhysicalSize<u32>,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     num_vertices: u32,
 }
 
 impl State {
-    pub async fn new_async(
-        proxy: EventLoopProxy<AppEvent>,
-        window: Arc<Window>,
-        size: PhysicalSize<u32>,
-    ) {
+    pub async fn new_async(proxy: EventLoopProxy<AppEvent>, window: Arc<Window>) {
         // let size = window.inner_size();
 
         //>> Instance --------------------
@@ -92,18 +88,18 @@ impl State {
             .find(|f| f.is_srgb())
             .unwrap_or(surface_capabilities.formats[0]);
 
+        // Actual configuration happens at the end, because we don't know the size yet.
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
-            width: size.width,
-            height: size.height,
+            width: 0,
+            height: 0,
             present_mode:   surface_capabilities.present_modes[0], // Fifo is usually supported accross graphic system . Basically a buffer but limit the frame rate  . Mailbox is woth a try
             view_formats: vec![],
             alpha_mode: surface_capabilities.alpha_modes[0],
             desired_maximum_frame_latency: 2, // hint for the number of images to queue up.
         };
 
-        surface.configure(&device, &config);
         //<<--------------------
 
         //>> Shaders
@@ -169,21 +165,23 @@ impl State {
         let num_vertices = VERTICES.len() as u32;
 
         // SEND  new State
-        let state = Self {
+        let mut state = Self {
+            window,
             surface,
             device,
             queue,
             config,
-            size,
             render_pipeline,
             vertex_buffer,
             num_vertices,
         };
+
+        state.resize(state.window.inner_size());
         proxy.send_event(AppEvent::StateReady(state)).unwrap();
     }
 
-    pub fn new(proxy: EventLoopProxy<AppEvent>, window: Arc<Window>, size: PhysicalSize<u32>) {
-        let future = State::new_async(proxy, window, size);
+    pub fn new(proxy: EventLoopProxy<AppEvent>, window: Arc<Window>) {
+        let future = State::new_async(proxy, window);
 
         #[cfg(not(target_arch = "wasm32"))]
         pollster::block_on(future);
@@ -192,14 +190,16 @@ impl State {
         wasm_bindgen_futures::spawn_local(future);
     }
 
-    
     // Window resize
     pub fn resize(&mut self, new_size: PhysicalSize<u32>) {
-        if new_size.width > 0 && new_size.height > 0 {
-            self.size = new_size;
-            self.config.width = new_size.width;
-            self.config.height = new_size.height;
+        let old_size = PhysicalSize::new(self.config.width, self.config.height);
+        self.config.width = new_size.width;
+        self.config.height = new_size.height;
+
+        // If nothing changes, no need to re-configure. Its expensive after all!
+        if old_size != new_size {
             self.surface.configure(&self.device, &self.config);
+            self.window.request_redraw();
         }
     }
 
@@ -208,6 +208,11 @@ impl State {
     // For example, the screen: the color buffer. It is called a color attachment.
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+        // Don't draw if the window has no size.
+        if self.config.width == 0 || self.config.height == 0 {
+            return Ok(());
+        }
+
         //  Grab an image to draw to. Swap chain.
         // A swap chain is general structure for queueing images up a to be drawn.
         // You draw and then you swap, it is like a double buffer.
