@@ -1,17 +1,16 @@
 use pollster;
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
-use winit::dpi::PhysicalSize;
 use winit::window::Window;
+use winit::{dpi::PhysicalSize, event_loop::EventLoopProxy};
 
+use crate::app::AppEvent;
 use crate::vertex::{self, Vertex, VERTICES};
 
-#[cfg(target_arch = "wasm32")]
-use futures::channel::oneshot::Receiver;
-
 // State- Instance
-pub struct State<'window> {
-    surface: wgpu::Surface<'window>,
+#[derive(Debug)]
+pub struct State {
+    surface: wgpu::Surface<'static>,
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
@@ -21,9 +20,12 @@ pub struct State<'window> {
     num_vertices: u32,
 }
 
-impl<'window> State<'window> {
-
-    pub async fn new_async(window: Arc<Window>, size: PhysicalSize<u32>) -> State<'window> {
+impl State {
+    pub async fn new_async(
+        proxy: EventLoopProxy<AppEvent>,
+        window: Arc<Window>,
+        size: PhysicalSize<u32>,
+    ) {
         // let size = window.inner_size();
 
         //>> Instance --------------------
@@ -169,8 +171,8 @@ impl<'window> State<'window> {
 
         let num_vertices = VERTICES.len() as u32;
 
-        // RETURN  new State
-        Self {
+        // SEND  new State
+        let state = Self {
             surface,
             device,
             queue,
@@ -179,31 +181,18 @@ impl<'window> State<'window> {
             render_pipeline,
             vertex_buffer,
             num_vertices,
-        }
+        };
+        proxy.send_event(AppEvent::StateReady(state)).unwrap();
     }
 
-    pub fn new(window: Arc<Window>, size: PhysicalSize<u32>) -> Option<State<'window>> {
+    pub fn new(proxy: EventLoopProxy<AppEvent>, window: Arc<Window>, size: PhysicalSize<u32>) {
+        let future = State::new_async(proxy, window, size);
 
-        
-        #[cfg(not(target_arch = "wasm32"))]        
-           return Some(pollster::block_on(State::new_async(window, size))); // found that pollster::block_on works for the wasm browser branch.
+        #[cfg(not(target_arch = "wasm32"))]
+        pollster::block_on(future);
 
         #[cfg(target_arch = "wasm32")]
-            {
-                let (sender, mut receiver) = futures::channel::oneshot::channel();
-
-                wasm_bindgen_futures::spawn_local(async move {
-                    let result = State::new_async(window, size).await;
-                    sender.send(result);
-                });
-            
-                let result = receiver.try_recv();
-                    if let Ok(state) = result {
-                        return state;
-                    } else { return None}
-                 
-            } 
-
+        wasm_bindgen_futures::spawn_local(future);
     }
 
     
